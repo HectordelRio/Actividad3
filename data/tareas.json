@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "texto": "Configurar el servidor en Render",
+    "completada": true
+  },
+  {
+    "id": 2,
+    "texto": "Subir repositorio a GitHub",
+    "completada": false
+  }
+]
