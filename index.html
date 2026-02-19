@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventario Pro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1> 🛒 SmartMart</h1>
+
+        <div id="auth-section">
+            <h2 id="title">Inicia Sesión</h2>
+
+            <div class="form-group">
+                <input type="email" id="email" placeholder="Correo">
+                <input type="password" id="pass" placeholder="Contraseña">
+                <button onclick="enviarAuth()" class="btn-primary" id="btn-txt">Entrar</button>
+            </div>
+            <p onclick="toggle()" style="cursor:pointer; color: blue;">¿No tienes cuenta? Regístrate</p>
+        </div>
+
+        <div id="crud-section" style="display:none;">
+            <button onclick="logout()" class="btn-del">Cerrar Sesión</button>
+            <div class="form-group">
+                <input type="text" id="p-nom" placeholder="Producto">
+                <input type="number" id="p-pre" placeholder="Precio">
+                <button onclick="agregar()" class="btn-primary" style="background:green">Agregar</button>
+            </div>
+            <div id="lista"></div>
+        </div>
+    </div>
+
+    <script>
+        let esLogin = true;
+        let token = localStorage.getItem('token');
+
+        if(token) mostrarCRUD();
+
+        function toggle() {
+    esLogin = !esLogin;
+    const titulo = document.getElementById('title');
+    const btnTxt = document.getElementById('btn-txt');
+    const linkToggle = document.querySelector('p[onclick="toggle()"]');
+
+    if (esLogin) {
+        titulo.innerText = 'Iniciar Sesión';
+        btnTxt.innerText = 'Entrar';
+        linkToggle.innerText = '¿No tienes cuenta? Regístrate';
+    } else {
+        titulo.innerText = 'Crear Cuenta';
+        btnTxt.innerText = 'Registrarme';
+        linkToggle.innerText = '¿Ya tienes cuenta? Inicia sesión';
+    }
+}
+        async function enviarAuth() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('pass').value;
+            const ruta = esLogin ? '/auth/login' : '/auth/register';
+
+            try {
+                const res = await fetch(ruta, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                
+                if(res.ok) {
+                    if(esLogin) {
+                        localStorage.setItem('token', data.token);
+                        location.reload();
+                    } else {
+                        alert("¡Registrado! Ahora inicia sesión");
+                        toggle();
+                    }
+                } else { alert(data.mensaje); }
+            } catch(e) { alert("Servidor apagado o error 404"); }
+        }
+
+        function mostrarCRUD() {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('crud-section').style.display = 'block';
+            cargar();
+        }
+
+        function logout() { localStorage.removeItem('token'); location.reload(); }
+
+        // --- FUNCIONES DEL INVENTARIO ---
+
+async function cargar() {
+    const res = await fetch('/productos', { 
+        headers: {'Authorization': `Bearer ${token}`} 
+    });
+    const prods = await res.json();
+    
+    const listaDiv = document.getElementById('lista');
+    // Aquí generamos la lista con el botón de eliminar para cada uno
+    listaDiv.innerHTML = prods.map(p => `
+        <div class="item" style="display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; margin-bottom: 5px; padding: 10px; border-radius: 5px;">
+            <span><strong>${p.nombre}</strong> - $${p.precio}</span>
+            <button onclick="borrar(${p.id})" style="background: #ff4757; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">
+                Eliminar 🗑️
+            </button>
+        </div>
+    `).join('');
+}
+
+async function agregar() {
+    const nombre = document.getElementById('p-nom').value;
+    const precio = document.getElementById('p-pre').value;
+
+    if(!nombre || !precio) return alert("Pon nombre y precio, menso");
+
+    const res = await fetch('/productos', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ nombre, precio: Number(precio) })
+    });
+
+    if(res.ok) {
+        document.getElementById('p-nom').value = '';
+        document.getElementById('p-pre').value = '';
+        cargar(); // Recargamos la lista automáticamente
+    } else {
+        alert("Error al guardar producto");
+    }
+}
+
+async function borrar(id) {
+    if(!confirm("¿Seguro que quieres borrarlo?")) return;
+
+    const res = await fetch(`/productos/${id}`, { 
+        method: 'DELETE', 
+        headers: {'Authorization': `Bearer ${token}`} 
+    });
+
+    if(res.ok) {
+        cargar(); // Recargamos la lista
+    } else {
+        alert("No se pudo borrar");
+    }
+}
+    </script>
+</body>
+</html>
