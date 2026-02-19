@@ -95,7 +95,7 @@ async function cargar() {
     const prods = await res.json();
     
     const listaDiv = document.getElementById('lista');
-    // Aquí generamos la lista con el botón de eliminar para cada uno
+    
     listaDiv.innerHTML = prods.map(p => `
         <div class="item" style="display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; margin-bottom: 5px; padding: 10px; border-radius: 5px;">
             <span><strong>${p.nombre}</strong> - $${p.precio}</span>
@@ -124,7 +124,7 @@ async function agregar() {
     if(res.ok) {
         document.getElementById('p-nom').value = '';
         document.getElementById('p-pre').value = '';
-        cargar(); // Recargamos la lista automáticamente
+        cargar(); 
     } else {
         alert("Error al guardar producto");
     }
@@ -139,11 +139,12 @@ async function borrar(id) {
     });
 
     if(res.ok) {
-        cargar(); // Recargamos la lista
+        cargar(); 
     } else {
         alert("No se pudo borrar");
     }
 }
     </script>
 </body>
+
 </html>

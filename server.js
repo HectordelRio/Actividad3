@@ -10,38 +10,29 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-const PRODUCTOS_FILE = path.join(__dirname, 'data', 'productos.json');
+// CAMINO AL ARCHIVO - Verifica que la carpeta 'data' exista en GitHub
+const DATA_PATH = path.join(__dirname, 'data', 'productos.json');
 
-// --- AUTENTICACIÓN DE ADMINISTRADOR/CLIENTE ---
-app.post('/login', (req, res) => {
+// RUTA PARA VER PRODUCTOS
+app.get('/api/productos', (req, res) => {
+    try {
+        const data = fs.readFileSync(DATA_PATH, 'utf-8');
+        res.json(JSON.parse(data));
+    } catch (error) {
+        res.status(500).json({ error: "No se pudo leer el archivo de productos" });
+    }
+});
+
+// LOGIN SENCILLO
+app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    // Validación de acceso al sistema SmartStore
     if (username === 'admin' && password === '1234') {
-        res.json({ success: true, role: 'admin' });
+        res.json({ success: true });
     } else {
-        res.status(401).json({ success: false, message: 'Acceso denegado' });
+        res.status(401).json({ success: false });
     }
 });
 
-// --- API DE INVENTARIO (SMARTSTORE) ---
-app.get('/productos', (req, res) => {
-    const data = JSON.parse(fs.readFileSync(PRODUCTOS_FILE, 'utf-8'));
-    res.json(data);
+app.listen(PORT, () => {
+    console.log(`Servidor de SmartStore activo en puerto ${PORT}`);
 });
-
-// Ruta para actualizar stock (Esto ya no es una "tarea", es una venta)
-app.post('/comprar', (req, res) => {
-    const productos = JSON.parse(fs.readFileSync(PRODUCTOS_FILE, 'utf-8'));
-    const { id, cantidad } = req.body;
-    
-    const index = productos.findIndex(p => p.id === id);
-    if (index !== -1 && productos[index].stock >= cantidad) {
-        productos[index].stock -= cantidad; // Resta del inventario
-        fs.writeFileSync(PRODUCTOS_FILE, JSON.stringify(productos, null, 2));
-        res.json({ success: true, message: 'Compra realizada' });
-    } else {
-        res.status(400).json({ success: false, message: 'Sin stock' });
-    }
-});
-
-app.listen(PORT, () => console.log(`SmartStore Live en puerto ${PORT}`));
