@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>SmartStore Pro - E-commerce</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>SmartStore Pro</h1>
+        <div id="header-actions">
+            <button id="cart-btn" class="hidden" onclick="toggleCart()">🛒 <span id="cart-count">0</span></button>
+            <span id="status-tag">No identificado</span>
+        </div>
+    </header>
+
+    <div id="login-screen" class="modal-bg">
+        <div class="modal-box">
+            <h3>Panel de Control</h3>
+            <input type="text" id="user" placeholder="Usuario (admin)">
+            <input type="password" id="pass" placeholder="Contraseña (1234)">
+            <button onclick="intentarAcceso()">Acceder</button>
+        </div>
+    </div>
+
+    <div id="cart-sidebar" class="cart-sidebar">
+        <div class="cart-header">
+            <h3>Tu Carrito</h3>
+            <button onclick="toggleCart()">X</button>
+        </div>
+        <div id="cart-items"></div>
+        <div class="cart-footer">
+            <p>Total: $<span id="cart-total">0</span></p>
+            <button onclick="finalizarCompra()">Confirmar Pedido</button>
+        </div>
+    </div>
+
+    <main id="main-content" class="hidden">
+        <h2>Lo último en Tecnología</h2>
+        <div id="productos-container" class="grid-productos"></div>
+    </main>
+
+    <script>
+        let carrito = [];
+
+        async function intentarAcceso() {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    username: document.getElementById('user').value,
+                    password: document.getElementById('pass').value
+                })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                document.getElementById('cart-btn').classList.remove('hidden');
+                document.getElementById('status-tag').innerText = "Admin Conectado";
+                cargarCatalogo();
+            } else {
+                alert("Credenciales incorrectas");
+            }
+        }
+
+        async function cargarCatalogo() {
+            const res = await fetch('/api/catalogo');
+            const productos = await res.json();
+            const container = document.getElementById('productos-container');
+            container.innerHTML = productos.map(p => `
+                <div class="card">
+                    <h3>${p.nombre}</h3>
+                    <p class="precio">$${p.precio}</p>
+                    <p class="stock">Stock: ${p.stock}</p>
+                    <button onclick="agregarAlCarrito(${p.id}, '${p.nombre}', ${p.precio})">Agregar</button>
+                </div>
+            `).join('');
+        }
+
+        function agregarAlCarrito(id, nombre, precio) {
+            carrito.push({id, nombre, precio});
+            actualizarInterfazCarrito();
+        }
+
+        function actualizarInterfazCarrito() {
+            const container = document.getElementById('cart-items');
+            const count = document.getElementById('cart-count');
+            const total = document.getElementById('cart-total');
+            
+            count.innerText = carrito.length;
+            container.innerHTML = carrito.map((item, index) => `
+                <div class="cart-item">
+                    <span>${item.nombre}</span>
+                    <span>$${item.precio}</span>
+                    <button onclick="quitarDelCarrito(${index})">🗑️</button>
+                </div>
+            `).join('');
+
+            total.innerText = carrito.reduce((sum, item) => sum + item.precio, 0);
+        }
+
+        function quitarDelCarrito(index) {
+            carrito.splice(index, 1);
+            actualizarInterfazCarrito();
+        }
+
+        function toggleCart() {
+            document.getElementById('cart-sidebar').classList.toggle('open');
+        }
+
+        async function finalizarCompra() {
+            if(carrito.length === 0) return alert("Carrito vacío");
+            
+            for(let item of carrito) {
+                await fetch('/api/comprar', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id: item.id })
+                });
+            }
+            alert("Venta procesada con éxito");
+            carrito = [];
+            actualizarInterfazCarrito();
+            toggleCart();
+            cargarCatalogo(); 
+        }
+    </script>
+</body>
+</html>
